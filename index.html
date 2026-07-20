@@ -2403,8 +2403,13 @@
                     let successMsg = `Permintaan pengiriman berhasil dikirim:<br>
                     1. Data otomatis dicatat ke Google Spreadsheet Admin.<br>`;
                     if (file && result.fileUrl && result.fileUrl !== 'Tidak ada lampiran') {
-                        successMsg += `2. File lampiran berhasil diunggah ke Google Drive Admin.<br>
-                        <a href="${result.fileUrl}" target="_blank" style="color: #a83a52; font-weight: 600; text-decoration: underline; display: inline-block; margin-top: 5px;">Lihat File Diunggah 📄</a>`;
+                        if (result.fileUrl.indexOf('Gagal upload') !== -1) {
+                            successMsg += `<span style="color: #d9480f; font-weight: 500;">⚠️ 2. File gagal diunggah ke Google Drive karena batasan kebijakan IT domain GSuite Anda (Akses ditolak: DriveApp).</span><br>
+                            <span style="font-size: 11px; color: #666; display: block; margin-top: 3px;">Namun, <strong>data teks pengiriman tetap sukses tersimpan</strong> ke Google Spreadsheet Admin!</span>`;
+                        } else {
+                            successMsg += `2. File lampiran berhasil diunggah ke Google Drive Admin.<br>
+                            <a href="${result.fileUrl}" target="_blank" style="color: #a83a52; font-weight: 600; text-decoration: underline; display: inline-block; margin-top: 5px;">Lihat File Diunggah 📄</a>`;
+                        }
                     } else {
                         successMsg += `2. Tanpa lampiran file.`;
                     }
@@ -2753,10 +2758,19 @@
                 
                 <h4 style="margin: 15px 0 5px; font-weight: 600; color: #111;">Langkah-langkah Setup:</h4>
                 <ol style="margin-left: 20px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 8px; padding-left: 0;">
-                    <li>Buka <strong><a href="https://sheets.new" target="_blank" style="color: #a83a52; font-weight: 600; text-decoration: underline;">Google Spreadsheet baru</a></strong>.</li>
+                    <li>Buka <strong><a href="https://docs.google.com/spreadsheets/d/18KgMuMpfGf3mC_D50XKLdy6EfHxNYdPJCiWqCZiKEVs/edit?gid=0#gid=0" target="_blank" style="color: #a83a52; font-weight: 600; text-decoration: underline;">Google Spreadsheet Anda</a></strong>.</li>
                     <li>Di menu atas spreadsheet, pilih <strong>Extensions (Ekstensi)</strong> &gt; <strong>Apps Script</strong>.</li>
-                    <li>Hapus semua kode default di dalam editor script, lalu <strong>salin dan tempel kode di bawah ini</strong>.</li>
-                    <li>Klik tombol <strong>Save (Simpan)</strong> 💾 di bagian atas.</li>
+                    <li>Hapus semua kode default di dalam editor script, lalu <strong>salin dan tempel kode lengkap di bawah ini</strong>.</li>
+                    <li>Klik tombol <strong>Save (Simpan)</strong> 💾 di bagian atas editor.</li>
+                    <li style="background: #fff9db; padding: 8px; border-radius: 4px; border: 1px solid #ffe066;">
+                        <strong>⚠️ PENTING (Otorisasi Izin Akses):</strong><br>
+                        Sebelum melakukan deploy, di bagian atas editor Apps Script terdapat dropdown pilihan fungsi (biasanya tertulis <code>doPost</code>).<br>
+                        - Ubah dropdown tersebut menjadi <strong><code>triggerAuth</code></strong>.<br>
+                        - Klik tombol <strong>Run (Jalankan)</strong> di sebelahnya.<br>
+                        - Klik <strong>Review Permissions (Tinjau Izin)</strong> saat pop-up muncul.<br>
+                        - Pilih akun Google Anda, klik <strong>Advanced (Lanjutan)</strong> &gt; klik <strong>Go to ... (tidak aman)</strong> &gt; klik <strong>Allow (Izinkan)</strong>.<br>
+                        <em>Langkah ini wajib agar Google memberikan izin kepada script Anda untuk mengunggah file ke Google Drive dan menulis data ke Spreadsheet!</em>
+                    </li>
                     <li>Klik tombol <strong>Deploy (Terapkan)</strong> di kanan atas &gt; pilih <strong>New deployment (Penerapan baru)</strong>.</li>
                     <li>Pilih jenis <strong>Web app (Aplikasi web)</strong> (klik ikon gerigi di sebelah kiri "Pilih jenis" jika belum muncul).</li>
                     <li>Ubah konfigurasi berikut:
@@ -2765,7 +2779,15 @@
                             <li>Who has access (Siapa yang memiliki akses): <strong>Anyone (Siapa saja)</strong> <em>&lt;-- PENTING agar semua user dapat submit!</em></li>
                         </ul>
                     </li>
-                    <li>Klik tombol <strong>Deploy</strong>, lalu berikan izin akses (Authorize access) jika diminta oleh akun Google Anda.</li>
+                    <li>Klik tombol <strong>Deploy</strong>.</li>
+                    <li style="background: #e3faf2; padding: 8px; border-radius: 4px; border: 1px solid #12b886; margin-top: 5px;">
+                        <strong>💡 PENTING (Setiap Kali Update Kode):</strong><br>
+                        Setiap kali Anda mengubah/memperbarui kode di Apps Script editor, Anda <strong>WAJIB</strong> membuat versi baru!<br>
+                        - Klik <strong>Deploy</strong> &gt; <strong>Manage deployments</strong>.<br>
+                        - Klik ikon <strong>Pensil (Edit)</strong> di kanan atas.<br>
+                        - Pada dropdown "Version", pilih <strong>"New version" (Versi baru)</strong>.<br>
+                        - Klik <strong>Deploy</strong>, lalu salin kembali URL terbaru (biasanya tetap sama, namun versi baru wajib di-deploy agar perubahan kodenya aktif!).
+                    </li>
                     <li>Salin <strong>Web App URL</strong> yang dihasilkan (berakhir dengan <code>/exec</code>).</li>
                     <li>Klik tombol <strong>"Atur/Ubah URL Web App"</strong> di aplikasi ini, lalu paste URL tersebut dan klik Simpan!</li>
                 </ol>
@@ -2774,57 +2796,96 @@
                     <h4 style="font-weight: 600; color: #111; margin: 0;">📋 Salin Kode Apps Script:</h4>
                     <button onclick="copyAppsScriptCode()" style="background: #f5e6e9; color: #a83a52; border: 1px solid #ebd3d7; padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: 600; transition: all 0.2s;">Salin Kode</button>
                 </div>
-                <textarea id="appsScriptCodeTextarea" readonly style="width: 100%; height: 160px; font-family: monospace; font-size: 11px; padding: 10px; background: #fafafa; border: 1px solid #ddd; border-radius: 4px; resize: vertical; line-height: 1.4;">function doPost(e) {
+                <textarea id="appsScriptCodeTextarea" readonly style="width: 100%; height: 200px; font-family: monospace; font-size: 11px; padding: 10px; background: #fafafa; border: 1px solid #ddd; border-radius: 4px; resize: vertical; line-height: 1.4;">function triggerAuth() {
+  // Fungsi ini dijalankan SEKALI di dalam Editor Apps Script untuk memberikan izin/otorisasi akses Drive & Sheets.
+  try {
+    var ss = SpreadsheetApp.openById("18KgMuMpfGf3mC_D50XKLdy6EfHxNYdPJCiWqCZiKEVs");
+    Logger.log("Berhasil membuka Spreadsheet: " + ss.getName());
+    
+    var sheet = ss.getSheetByName("DATABASE");
+    if (!sheet) {
+      sheet = ss.insertSheet("DATABASE");
+      Logger.log("Berhasil membuat sheet DATABASE baru.");
+    }
+    
+    if (sheet.getLastRow() === 0) {
+      var headers = [
+        "Tanggal Request", "OMO", "No. Order", "Nama Customer", "No. RT", 
+        "RT Action", "Nama Barang", "Alamat Lengkap", "Kecamatan", 
+        "Kota", "Tanggal Kirim", "Remark", "Kesiapan Barang", "Lampiran (Drive Link)"
+      ];
+      sheet.appendRow(headers);
+    }
+    
+    var folder = DriveApp.getFolderById("1ZTgYk1apRYglAj8WYezIzHEmJmbQADCO");
+    Logger.log("Berhasil membuka Folder Drive: " + folder.getName());
+    return "Izin Berhasil Diaktifkan! Sheet 'DATABASE' telah siap digunakan.";
+  } catch (err) {
+    Logger.log("Error Otorisasi: " + err.toString());
+    throw err;
+  }
+}
+
+function doPost(e) {
   try {
     var jsonString = e.postData.contents;
     var data = JSON.parse(jsonString);
     
     // 1. Buka Spreadsheet (Menggunakan ID Spreadsheet Anda yang baru)
     var spreadsheetId = "18KgMuMpfGf3mC_D50XKLdy6EfHxNYdPJCiWqCZiKEVs";
-    var ss;
-    if (spreadsheetId) {
-      ss = SpreadsheetApp.openById(spreadsheetId);
-    } else {
-      var files = DriveApp.getFilesByName("Logisales Delivery Requests");
-      if (files.hasNext()) {
-        ss = SpreadsheetApp.open(files.next());
-      } else {
-        ss = SpreadsheetApp.create("Logisales Delivery Requests");
-        var activeSheet = ss.getActiveSheet();
-        var headers = [
-          "Tanggal Request", "OMO", "No. Order", "Nama Customer", "No. RT", 
-          "RT Action", "Nama Barang", "Alamat Lengkap", "Kecamatan", 
-          "Kota", "Tanggal Kirim", "Remark", "Kesiapan Barang", "Lampiran (Drive Link)"
-        ];
-        activeSheet.appendRow(headers);
-      }
+    var ss = SpreadsheetApp.openById(spreadsheetId);
+    
+    // Cari sheet dengan nama "DATABASE"
+    var sheet = ss.getSheetByName("DATABASE");
+    if (!sheet) {
+      sheet = ss.insertSheet("DATABASE");
     }
     
-    var sheet = ss.getSheets()[0];
+    // Pastikan header ada jika sheet baru kosong
+    if (sheet.getLastRow() === 0) {
+      var headers = [
+        "Tanggal Request", "OMO", "No. Order", "Nama Customer", "No. RT", 
+        "RT Action", "Nama Barang", "Alamat Lengkap", "Kecamatan", 
+        "Kota", "Tanggal Kirim", "Remark", "Kesiapan Barang", "Lampiran (Drive Link)"
+      ];
+      sheet.appendRow(headers);
+    }
     
     // 2. Unggah File Lampiran ke Google Drive (Menggunakan Folder ID Anda yang baru)
     var fileUrl = "Tidak ada lampiran";
     if (data.fileData && data.fileName) {
-      var folder;
-      var folderId = "1ZTgYk1apRYglAj8WYezIzHEmJmbQADCO";
-      if (folderId) {
-        folder = DriveApp.getFolderById(folderId);
-      } else {
-        var folders = DriveApp.getFoldersByName("Logisales Delivery Attachments");
-        if (folders.hasNext()) {
-          folder = folders.next();
+      try {
+        var folder;
+        var folderId = "1ZTgYk1apRYglAj8WYezIzHEmJmbQADCO";
+        if (folderId) {
+          folder = DriveApp.getFolderById(folderId);
         } else {
-          folder = DriveApp.createFolder("Logisales Delivery Attachments");
+          var folders = DriveApp.getFoldersByName("Logisales Delivery Attachments");
+          if (folders.hasNext()) {
+            folder = folders.next();
+          } else {
+            folder = DriveApp.createFolder("Logisales Delivery Attachments");
+          }
         }
+        
+        // Convert base64 ke blob file
+        var contentType = data.fileType || "application/octet-stream";
+        var decodedBytes = Utilities.base64Decode(data.fileData);
+        var blob = Utilities.newBlob(decodedBytes, contentType, data.fileName);
+        var file = folder.createFile(blob);
+        
+        // Amankan setSharing dengan try-catch agar kebijakan organisasi GSuite tidak memblokir upload file
+        try {
+          file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        } catch (sharingError) {
+          Logger.log("Info: Akses sharing publik dibatasi oleh kebijakan domain IT Anda. File tetap terupload secara internal.");
+        }
+        
+        fileUrl = file.getUrl();
+      } catch (driveError) {
+        Logger.log("Error DriveApp: " + driveError.toString());
+        fileUrl = "Gagal upload: " + driveError.toString() + " (Izin Google Drive dibatasi kebijakan IT GSuite)";
       }
-      
-      // Convert base64 ke blob file
-      var contentType = data.fileType || "application/octet-stream";
-      var decodedBytes = Utilities.base64Decode(data.fileData);
-      var blob = Utilities.newBlob(decodedBytes, contentType, data.fileName);
-      var file = folder.createFile(blob);
-      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-      fileUrl = file.getUrl();
     }
     
     // 3. Tambahkan Baris Data Baru
