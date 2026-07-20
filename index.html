@@ -6,7 +6,6 @@
     <title>PT. Kawan Lama Solusi - Logisales Delivery System</title>
     <link rel="icon" type="image/png" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQg3WYFEE_dQrphCfsBa0MBlzKDxA1Qo3I5HqIDQw05khi3Oz3D2U__3t0&s=10">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         * {
             margin: 0;
@@ -1594,27 +1593,21 @@
                     </div>
                 </div>
 
-                <!-- Google connection bar -->
+                <!-- Google Apps Script connection bar -->
                 <div id="googleConnectionBar" class="google-connection-bar" style="margin-bottom: 25px; padding: 15px; border-radius: 8px; background: #fff; border: 1px dashed #ddd; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: all 0.3s ease;">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <span style="font-size: 24px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1));">📊</span>
+                    <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 280px;">
+                        <span id="googleStatusEmoji" style="font-size: 28px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1));">📝</span>
                         <div>
-                            <div id="googleStatusTitle" style="font-weight: 600; font-size: 14px; color: #333; margin-bottom: 2px;">Integrasi Google Workspace Belum Aktif</div>
-                            <div id="googleStatusDesc" style="font-size: 12px; color: #666; line-height: 1.4;">Hubungkan akun Google Anda untuk menyimpan request ke Google Spreadsheet & Lampiran ke Google Drive secara otomatis.</div>
+                            <div id="googleStatusTitle" style="font-weight: 600; font-size: 14px; color: #333; margin-bottom: 2px;">Integrasi Google Sheets & Drive (Apps Script)</div>
+                            <div id="googleStatusDesc" style="font-size: 12px; color: #666; line-height: 1.4;">Hubungkan form ini langsung ke Google Spreadsheet milik Admin menggunakan Apps Script tanpa perlu login Google untuk setiap user!</div>
                         </div>
                     </div>
-                    <div>
-                        <button id="btnConnectGoogle" type="button" style="background: #4285F4; color: white; border: none; padding: 10px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background 0.2s; box-shadow: 0 2px 4px rgba(66, 133, 244, 0.2);">
-                            <svg width="18" height="18" viewBox="0 0 48 48" style="background: white; border-radius: 2px; padding: 2px;">
-                                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
-                                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
-                                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
-                                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
-                            </svg>
-                            Hubungkan ke Google
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <button id="btnSetupAppsScript" type="button" class="btn" style="background: #a83a52; color: white; border: none; padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: background 0.2s;">
+                            ⚙️ Setup & Kode Apps Script
                         </button>
-                        <button id="btnDisconnectGoogle" type="button" style="background: #f5f5f5; color: #333; border: 1px solid #ddd; padding: 10px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; display: none; transition: background 0.2s;">
-                            Putuskan Hubungan Google
+                        <button id="btnConfigUrl" type="button" class="btn" style="background: #fff; color: #444; border: 1px solid #ccc; padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: background 0.2s;">
+                            🔗 Atur/Ubah URL Web App
                         </button>
                     </div>
                 </div>
@@ -2016,344 +2009,143 @@
             }, 4000); // Set to 4 seconds as requested
         });
 
-        // Initialize Google Identity Services safely
-        let tokenClient = null;
-        let cachedAccessToken = null;
-        let googleUser = null;
-        let googleClientId = null;
+        // Google Apps Script integration state
+        let appsScriptUrl = '';
 
-        async function initGoogleGIS() {
+        // Initialize Google Apps Script integration
+        async function initAppsScript() {
             try {
+                // Fetch config from file
                 const configRes = await fetch('./firebase-applet-config.json');
-                if (!configRes.ok) throw new Error('File firebase-applet-config.json tidak ditemukan atau tidak bisa dimuat');
-                const config = await configRes.json();
-                
-                googleClientId = config.oAuthClientId || config.clientId || config.client_id;
-                if (!googleClientId || googleClientId.includes('YOUR_OAUTH_CLIENT_ID_HERE')) {
-                    throw new Error('Google Client ID tidak ditemukan atau masih default. Harap isi key "oAuthClientId" di firebase-applet-config.json dengan Client ID Anda.');
+                if (configRes.ok) {
+                    const config = await configRes.json();
+                    appsScriptUrl = config.appsScriptUrl || localStorage.getItem('appsScriptUrl') || '';
+                } else {
+                    appsScriptUrl = localStorage.getItem('appsScriptUrl') || '';
                 }
-
-                // Wait for GIS script to load if needed
-                if (typeof google === 'undefined') {
-                    await new Promise((resolve) => {
-                        const checkInterval = setInterval(() => {
-                            if (typeof google !== 'undefined') {
-                                clearInterval(checkInterval);
-                                resolve();
-                            }
-                        }, 100);
-                    });
-                }
-
-                // Initialize Google Token Client for implicit flow
-                tokenClient = google.accounts.oauth2.initTokenClient({
-                    client_id: googleClientId,
-                    scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email',
-                    callback: async (tokenResponse) => {
-                        if (tokenResponse.error !== undefined) {
-                            throw tokenResponse;
-                        }
-                        
-                        cachedAccessToken = tokenResponse.access_token;
-                        sessionStorage.setItem('google_oauth_token', cachedAccessToken);
-                        
-                        // Fetch user email
-                        try {
-                            const infoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                                headers: { 'Authorization': `Bearer ${cachedAccessToken}` }
-                            });
-                            if (infoRes.ok) {
-                                const userInfo = await infoRes.json();
-                                googleUser = { email: userInfo.email };
-                                sessionStorage.setItem('google_user_email', userInfo.email);
-                            } else {
-                                googleUser = { email: 'Pengguna Terhubung' };
-                            }
-                        } catch (e) {
-                            googleUser = { email: 'Pengguna Terhubung' };
-                        }
-
-                        updateGoogleStatusUI();
-                        alert('🟢 Berhasil terhubung langsung dengan Google Sheets & Drive!');
-                    },
-                });
-
-                // Restore from session storage
-                const storedToken = sessionStorage.getItem('google_oauth_token');
-                const storedEmail = sessionStorage.getItem('google_user_email');
-                if (storedToken) {
-                    cachedAccessToken = storedToken;
-                    googleUser = { email: storedEmail || 'Pengguna Terhubung' };
-                }
-                updateGoogleStatusUI();
-
             } catch (error) {
-                console.warn('Google Integration disabled or client ID not set yet:', error);
-                
-                // Show clean offline instructions
-                const titleEl = document.getElementById('googleStatusTitle');
-                const descEl = document.getElementById('googleStatusDesc');
-                const btnConnect = document.getElementById('btnConnectGoogle');
-                const btnDisconnect = document.getElementById('btnDisconnectGoogle');
-                const barEl = document.getElementById('googleConnectionBar');
-
-                if (titleEl) {
-                    titleEl.textContent = 'Integrasi Google Workspace (Mode Offline / Belum Dikonfigurasi)';
-                    titleEl.style.color = '#e74c3c';
-                }
-                if (descEl) {
-                    descEl.innerHTML = `Untuk mengaktifkan sinkronisasi otomatis, silakan buat <strong>OAuth 2.0 Web Client ID</strong> di Google Cloud Console dan masukkan ke file <strong>firebase-applet-config.json</strong> pada key <strong>"oAuthClientId"</strong>. Pastikan domain halaman ini telah ditambahkan di "Authorized JavaScript origins".`;
-                }
-                if (btnConnect) btnConnect.style.display = 'flex'; // Allow retry
-                if (btnDisconnect) btnDisconnect.style.display = 'none';
-                if (barEl) {
-                    barEl.style.borderColor = '#e74c3c';
-                    barEl.style.background = '#fdf2f2';
-                }
+                console.warn('Apps Script config failed to load from file:', error);
+                appsScriptUrl = localStorage.getItem('appsScriptUrl') || '';
             }
+            updateAppsScriptUI();
         }
 
-        // Run Google GIS Initialization
-        initGoogleGIS();
-
-        async function connectGoogle() {
-            if (!tokenClient) {
-                alert('❌ Integrasi Google belum siap. Harap isi "oAuthClientId" yang valid di firebase-applet-config.json.');
-                return;
-            }
-            try {
-                // Request access token with consent prompt
-                tokenClient.requestAccessToken({ prompt: 'consent' });
-            } catch (error) {
-                console.error('Koneksi Google gagal:', error);
-                alert('❌ Koneksi Google gagal: ' + error.message);
-            }
-        }
-
-        async function disconnectGoogle() {
-            try {
-                if (cachedAccessToken) {
-                    google.accounts.oauth2.revoke(cachedAccessToken, () => {
-                        console.log('Token revoked successfully');
-                    });
-                }
-                cachedAccessToken = null;
-                googleUser = null;
-                sessionStorage.removeItem('google_oauth_token');
-                sessionStorage.removeItem('google_user_email');
-                updateGoogleStatusUI();
-                alert('📴 Berhasil memutuskan hubungan dengan Google.');
-            } catch (error) {
-                console.error('Gagal memutuskan hubungan:', error);
-                // Clear state anyway
-                cachedAccessToken = null;
-                googleUser = null;
-                sessionStorage.removeItem('google_oauth_token');
-                sessionStorage.removeItem('google_user_email');
-                updateGoogleStatusUI();
-            }
-        }
-
-        function updateGoogleStatusUI() {
+        // Update the Apps Script connection status UI
+        function updateAppsScriptUI() {
             const titleEl = document.getElementById('googleStatusTitle');
             const descEl = document.getElementById('googleStatusDesc');
-            const btnConnect = document.getElementById('btnConnectGoogle');
-            const btnDisconnect = document.getElementById('btnDisconnectGoogle');
+            const emojiEl = document.getElementById('googleStatusEmoji');
             const barEl = document.getElementById('googleConnectionBar');
+            const btnConfigUrl = document.getElementById('btnConfigUrl');
 
             if (!titleEl) return;
 
-            if (cachedAccessToken && googleUser) {
-                titleEl.textContent = '🟢 Google Workspace Aktif';
+            if (appsScriptUrl && appsScriptUrl.trim() !== '') {
+                titleEl.textContent = '🟢 Google Spreadsheet & Drive Aktif (Metode Apps Script)';
                 titleEl.style.color = '#27ae60';
-                descEl.innerHTML = `Terhubung sebagai <strong>${googleUser.email}</strong>. Setiap pengiriman akan otomatis dicatat ke Google Sheets dan lampiran diunggah ke Google Drive.`;
-                if (btnConnect) btnConnect.style.display = 'none';
-                if (btnDisconnect) btnDisconnect.style.display = 'block';
+                descEl.innerHTML = `Form terhubung dengan Google Apps Script Web App. Setiap klik submit akan otomatis mencatat data ke Google Sheets dan lampiran terunggah ke Google Drive Admin tanpa perlu login Google untuk masing-masing user!`;
+                if (emojiEl) emojiEl.textContent = '🟢';
                 if (barEl) {
                     barEl.style.borderColor = '#27ae60';
                     barEl.style.background = '#f0fff4';
                 }
+                if (btnConfigUrl) {
+                    btnConfigUrl.innerHTML = '🔗 Ubah URL Web App';
+                }
             } else {
-                titleEl.textContent = 'Integrasi Google Workspace Belum Aktif';
-                titleEl.style.color = '#333';
-                descEl.textContent = 'Hubungkan akun Google Anda untuk menyimpan request ke Google Spreadsheet & Lampiran ke Google Drive secara otomatis.';
-                if (btnConnect) btnConnect.style.display = 'flex';
-                if (btnDisconnect) btnDisconnect.style.display = 'none';
+                titleEl.textContent = 'Integrasi Google Sheets & Drive Belum Aktif';
+                titleEl.style.color = '#e74c3c';
+                descEl.innerHTML = `Aplikasi saat ini berjalan dalam <strong>Mode Lokal</strong>. Agar data otomatis masuk ke Google Sheets & Drive Admin, silakan ikuti panduan setup Apps Script di sebelah kanan!`;
+                if (emojiEl) emojiEl.textContent = '⚠️';
                 if (barEl) {
-                    barEl.style.borderColor = '#ddd';
-                    barEl.style.background = '#fff';
+                    barEl.style.borderColor = '#e74c3c';
+                    barEl.style.background = '#fdf2f2';
+                }
+                if (btnConfigUrl) {
+                    btnConfigUrl.innerHTML = '🔗 Atur URL Web App';
                 }
             }
         }
 
-        // Attach Google button event listeners safely
-        const btnConnect = document.getElementById('btnConnectGoogle');
-        const btnDisconnect = document.getElementById('btnDisconnectGoogle');
-        if (btnConnect) btnConnect.addEventListener('click', connectGoogle);
-        if (btnDisconnect) btnDisconnect.addEventListener('click', disconnectGoogle);
-
-        // Google Workspace APIs implementation
-        async function uploadFileToDrive(file, progressCallback) {
-            if (!cachedAccessToken) throw new Error('Tidak terhubung dengan Google.');
-
-            progressCallback(10, 'Membuat metadata file di Google Drive...');
-            const metaRes = await fetch('https://www.googleapis.com/drive/v3/files', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${cachedAccessToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    name: `${Date.now()}_${file.name}`,
-                    mimeType: file.type || 'application/octet-stream'
-                })
-            });
-
-            if (!metaRes.ok) {
-                const errText = await metaRes.text();
-                throw new Error('Gagal membuat metadata file: ' + errText);
-            }
-
-            const meta = await metaRes.json();
-            const fileId = meta.id;
-
-            progressCallback(40, 'Mengunggah konten file ke Google Drive...');
-            const uploadRes = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `Bearer ${cachedAccessToken}`,
-                    'Content-Type': file.type || 'application/octet-stream'
-                },
-                body: file
-            });
-
-            if (!uploadRes.ok) {
-                const errText = await uploadRes.text();
-                throw new Error('Gagal mengunggah konten file: ' + errText);
-            }
-
-            progressCallback(70, 'Mengatur izin akses file agar dapat dilihat...');
-            await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${cachedAccessToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    role: 'reader',
-                    type: 'anyone'
-                })
-            });
-
-            progressCallback(90, 'Selesai mengunggah file!');
-            return `https://drive.google.com/file/d/${fileId}/view?usp=drivesdk`;
+        // Apps Script setup guide modal handlers
+        function openAppsScriptModal() {
+            const modal = document.getElementById('appsScriptModal');
+            if (modal) modal.classList.add('active');
         }
 
-        async function saveToGoogleSheets(formData, driveFileUrl, progressCallback) {
-            if (!cachedAccessToken) throw new Error('Tidak terhubung dengan Google.');
+        function closeAppsScriptModal() {
+            const modal = document.getElementById('appsScriptModal');
+            if (modal) modal.classList.remove('active');
+        }
 
-            progressCallback(20, 'Mencari Google Spreadsheet "Logisales Delivery Requests"...');
-            const query = encodeURIComponent("name='Logisales Delivery Requests' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false");
-            const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${cachedAccessToken}`
-                }
-            });
-
-            if (!searchRes.ok) {
-                const errText = await searchRes.text();
-                throw new Error('Gagal mencari spreadsheet: ' + errText);
-            }
-
-            const searchData = await searchRes.json();
-            let spreadsheetId = null;
-
-            if (searchData.files && searchData.files.length > 0) {
-                spreadsheetId = searchData.files[0].id;
-                progressCallback(50, 'Spreadsheet ditemukan. Menyiapkan pencatatan data...');
-            } else {
-                progressCallback(40, 'Spreadsheet tidak ditemukan. Membuat spreadsheet baru...');
-                const createRes = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${cachedAccessToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        properties: {
-                            title: 'Logisales Delivery Requests'
-                        }
+        function copyAppsScriptCode() {
+            const textarea = document.getElementById('appsScriptCodeTextarea');
+            if (textarea) {
+                textarea.select();
+                textarea.setSelectionRange(0, 99999); // For mobile devices
+                navigator.clipboard.writeText(textarea.value)
+                    .then(() => {
+                        alert('📋 Kode Apps Script berhasil disalin ke clipboard!');
                     })
-                });
+                    .catch(() => {
+                        alert('❌ Gagal menyalin kode secara otomatis, silakan salin manual.');
+                    });
+            }
+        }
 
-                if (!createRes.ok) {
-                    const errText = await createRes.text();
-                    throw new Error('Gagal membuat spreadsheet baru: ' + errText);
-                }
+        // Apps Script Config URL Modal Handlers
+        function openConfigUrlModal() {
+            const modal = document.getElementById('configUrlModal');
+            const input = document.getElementById('inputAppsScriptUrl');
+            if (input) input.value = appsScriptUrl;
+            if (modal) modal.classList.add('active');
+        }
 
-                const createData = await createRes.json();
-                spreadsheetId = createData.spreadsheetId;
+        function closeConfigUrlModal() {
+            const modal = document.getElementById('configUrlModal');
+            if (modal) modal.classList.remove('active');
+        }
 
-                progressCallback(60, 'Spreadsheet dibuat. Menulis baris judul (header)...');
-                const headers = [
-                    "Tanggal Request", "OMO", "No. Order", "Nama Customer", "No. RT", 
-                    "RT Action", "Nama Barang", "Alamat Lengkap", "Kecamatan", 
-                    "Kota", "Tanggal Kirim", "Remark", "Kesiapan Barang", "Lampiran (Drive Link)"
-                ];
-
-                const headerRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/A1:append?valueInputOption=USER_ENTERED`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${cachedAccessToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        values: [headers]
-                    })
-                });
-
-                if (!headerRes.ok) {
-                    console.warn('Gagal menulis header.');
+        function saveConfigUrlFromModal() {
+            const input = document.getElementById('inputAppsScriptUrl');
+            if (!input) return;
+            
+            let url = input.value.trim();
+            if (url !== '') {
+                if (!url.startsWith('https://script.google.com/')) {
+                    alert('⚠️ Format URL tidak valid! Harus diawali dengan "https://script.google.com/"');
+                    return;
                 }
             }
 
-            progressCallback(80, 'Menambahkan data permintaan baru ke spreadsheet...');
-            const nowStr = new Date().toLocaleString('id-ID');
-            const newRow = [
-                nowStr,
-                formData.omo,
-                formData.noOrder,
-                formData.namaCustomer,
-                formData.noRt,
-                formData.rtAction,
-                formData.namaBarang,
-                formData.alamatLengkap,
-                formData.kecamatan,
-                formData.kota,
-                formData.tanggalKirim,
-                formData.remark,
-                formData.kesiapanBarang,
-                driveFileUrl || 'Tidak ada lampiran'
-            ];
+            appsScriptUrl = url;
+            localStorage.setItem('appsScriptUrl', url);
+            updateAppsScriptUI();
+            closeConfigUrlModal();
+            alert('💾 URL Google Apps Script berhasil disimpan!');
+        }
 
-            const appendRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/A1:append?valueInputOption=USER_ENTERED`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${cachedAccessToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    values: [newRow]
-                })
+        // Attach Apps Script Button Event Listeners
+        const btnSetup = document.getElementById('btnSetupAppsScript');
+        const btnConfig = document.getElementById('btnConfigUrl');
+        if (btnSetup) btnSetup.addEventListener('click', openAppsScriptModal);
+        if (btnConfig) btnConfig.addEventListener('click', openConfigUrlModal);
+
+        // Run Apps Script Initialization
+        initAppsScript();
+
+        // Helper: Convert file to Base64
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    // Extract only base64 data without metadata header
+                    const base64 = reader.result.split(',')[1];
+                    resolve(base64);
+                };
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(file);
             });
-
-            if (!appendRes.ok) {
-                const errText = await appendRes.text();
-                throw new Error('Gagal menulis data ke spreadsheet: ' + errText);
-            }
-
-            progressCallback(100, 'Berhasil mencatat data ke Google Spreadsheet!');
         }
 
         // Login
@@ -2536,7 +2328,7 @@
                 attachment: file ? URL.createObjectURL(file) : '#'
             };
 
-            if (cachedAccessToken) {
+            if (appsScriptUrl && appsScriptUrl.trim() !== '') {
                 // Show sync modal
                 const syncModal = document.getElementById('googleSyncModal');
                 const syncTitle = document.getElementById('syncModalTitle');
@@ -2548,29 +2340,54 @@
                 syncModal.classList.add('active');
                 syncProgress.style.width = '10%';
                 syncTitle.textContent = 'Menyinkronkan data...';
-                syncDesc.textContent = 'Mohon tunggu sementara data permintaan pengiriman disimpan ke Google Workspace.';
-                syncStatus.textContent = 'Menyiapkan proses...';
+                syncDesc.textContent = 'Sedang mengirimkan data pengiriman ke Google Spreadsheet menggunakan Apps Script.';
+                syncStatus.textContent = 'Menyiapkan data...';
                 syncIcon.textContent = '🔄';
                 syncIcon.style.animation = 'spin 1.5s linear infinite';
 
                 try {
-                    let fileUrl = 'Tidak ada lampiran';
+                    let fileData = null;
+                    let fileName = null;
+                    let fileType = null;
+
                     if (file) {
-                        fileUrl = await uploadFileToDrive(file, (pct, statusText) => {
-                            syncProgress.style.width = `${pct * 0.5}%`; // 0-50% for drive
-                            syncStatus.textContent = `[Google Drive] ${statusText}`;
-                        });
-                        newItem.attachment = fileUrl;
+                        syncStatus.textContent = 'Membaca file lampiran...';
+                        syncProgress.style.width = '35%';
+                        fileData = await fileToBase64(file);
+                        fileName = file.name;
+                        fileType = file.type;
                     }
 
-                    await saveToGoogleSheets({
+                    syncStatus.textContent = 'Mengirim data ke Google Apps Script...';
+                    syncProgress.style.width = '65%';
+
+                    const payload = {
                         omo, noOrder, namaCustomer, noRt, rtAction,
                         namaBarang, alamatLengkap, kecamatan, kota,
-                        tanggalKirim, remark, kesiapanBarang
-                    }, fileUrl, (pct, statusText) => {
-                        syncProgress.style.width = `${50 + pct * 0.5}%`; // 50-100% for sheets
-                        syncStatus.textContent = `[Google Sheets] ${statusText}`;
+                        tanggalKirim, remark, kesiapanBarang,
+                        fileName, fileType, fileData
+                    };
+
+                    // Send POST request as text/plain to bypass CORS preflight
+                    const response = await fetch(appsScriptUrl, {
+                        method: 'POST',
+                        mode: 'cors',
+                        headers: {
+                            'Content-Type': 'text/plain;charset=utf-8'
+                        },
+                        body: JSON.stringify(payload)
                     });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
+                    }
+
+                    const result = await response.json();
+                    if (!result.success) {
+                        throw new Error(result.error || 'Terjadi kesalahan pada Google Apps Script.');
+                    }
+
+                    newItem.attachment = result.fileUrl && result.fileUrl !== 'Tidak ada lampiran' ? result.fileUrl : '#';
 
                     // Add to local data list
                     sampleData.unshift(newItem);
@@ -2578,13 +2395,20 @@
 
                     // Success state in modal
                     syncProgress.style.width = '100%';
-                    syncStatus.textContent = 'Sinkronisasi Selesai!';
+                    syncStatus.textContent = 'Selesai!';
                     syncIcon.textContent = '🎉';
                     syncIcon.style.animation = 'none';
-                    syncTitle.textContent = 'Berhasil Tersinkronisasi!';
-                    syncDesc.innerHTML = `Permintaan pengiriman berhasil disimpan:<br>
-                    1. Data tercatat di Google Spreadsheet <strong>"Logisales Delivery Requests"</strong>.<br>
-                    2. Lampiran tersimpan di Google Drive${file ? ' dengan akses publik.' : ''}`;
+                    syncTitle.textContent = 'Berhasil Terkirim!';
+                    
+                    let successMsg = `Permintaan pengiriman berhasil dikirim:<br>
+                    1. Data otomatis dicatat ke Google Spreadsheet Admin.<br>`;
+                    if (file && result.fileUrl && result.fileUrl !== 'Tidak ada lampiran') {
+                        successMsg += `2. File lampiran berhasil diunggah ke Google Drive Admin.<br>
+                        <a href="${result.fileUrl}" target="_blank" style="color: #a83a52; font-weight: 600; text-decoration: underline; display: inline-block; margin-top: 5px;">Lihat File Diunggah 📄</a>`;
+                    } else {
+                        successMsg += `2. Tanpa lampiran file.`;
+                    }
+                    syncDesc.innerHTML = successMsg;
                     
                     // Add close button to modal
                     const existingButtons = syncModal.querySelector('.modal-buttons');
@@ -2606,14 +2430,14 @@
                     document.getElementById('fileName').textContent = 'No file chosen';
 
                 } catch (error) {
-                    console.error('Gagal sinkronisasi Google Workspace:', error);
+                    console.error('Gagal sinkronisasi Google Apps Script:', error);
                     syncStatus.textContent = 'Gagal!';
                     syncIcon.textContent = '❌';
                     syncIcon.style.animation = 'none';
-                    syncTitle.textContent = 'Gagal Menyimpan ke Google';
-                    syncDesc.textContent = 'Error: ' + error.message;
+                    syncTitle.textContent = 'Gagal Mengirim';
+                    syncDesc.innerHTML = `Error: ${error.message}<br><br><span style="font-size: 12px; color: #777; line-height: 1.4; display: block; margin-top: 10px;">Saran:<br>1. Pastikan URL Web App Apps Script sudah benar.<br>2. Pastikan setelan akses "Who has access" di Google Apps Script sudah diatur ke "Anyone" (Siapa Saja).</span>`;
 
-                    // Add close/retry buttons
+                    // Add close button to modal
                     const existingButtons = syncModal.querySelector('.modal-buttons');
                     if (existingButtons) existingButtons.remove();
 
@@ -2628,10 +2452,53 @@
                     };
                 }
             } else {
-                // If not connected to Google, just save locally
+                // If Apps Script URL not configured, save locally with an option to read instructions
                 sampleData.unshift(newItem);
                 renderMonitoringTable();
-                alert('✅ Pengiriman berhasil ditambahkan ke sistem secara lokal!\n\nHubungkan akun Google Anda di bagian atas formulir untuk menyimpan ke Google Spreadsheet & Google Drive secara otomatis.');
+                
+                // Show modal overlay indicating local save + option to link
+                const syncModal = document.getElementById('googleSyncModal');
+                const syncTitle = document.getElementById('syncModalTitle');
+                const syncDesc = document.getElementById('syncModalDesc');
+                const syncProgress = document.getElementById('syncModalProgress');
+                const syncStatus = document.getElementById('syncModalStatus');
+                const syncIcon = document.getElementById('syncModalIcon');
+
+                syncModal.classList.add('active');
+                syncProgress.style.width = '100%';
+                syncStatus.textContent = 'Offline Demo';
+                syncIcon.textContent = '💾';
+                syncIcon.style.animation = 'none';
+                syncTitle.textContent = 'Disimpan Secara Lokal!';
+                syncDesc.innerHTML = `Permintaan pengiriman berhasil ditambahkan ke tabel <strong>Monitoring</strong> secara lokal.<br><br>
+                💡 <strong>Ingin data otomatis masuk ke Google Spreadsheet?</strong><br>
+                Admin dapat menghubungkan form ini ke Google Sheets & Google Drive menggunakan metode <strong>Google Apps Script (Web App)</strong> secara gratis!`;
+
+                const existingButtons = syncModal.querySelector('.modal-buttons');
+                if (existingButtons) existingButtons.remove();
+
+                const modalBtnContainer = document.createElement('div');
+                modalBtnContainer.className = 'modal-buttons';
+                modalBtnContainer.style.display = 'flex';
+                modalBtnContainer.style.justifyContent = 'center';
+                modalBtnContainer.style.gap = '10px';
+                modalBtnContainer.innerHTML = `
+                    <button class="modal-btn modal-btn-cancel" id="btnLocalClose">Tutup</button>
+                    <button class="modal-btn modal-btn-confirm" id="btnLocalSetup">Panduan Setup Sheets</button>
+                `;
+                syncModal.querySelector('.modal-box').appendChild(modalBtnContainer);
+
+                modalBtnContainer.querySelector('#btnLocalClose').onclick = function() {
+                    syncModal.classList.remove('active');
+                    modalBtnContainer.remove();
+                };
+
+                modalBtnContainer.querySelector('#btnLocalSetup').onclick = function() {
+                    syncModal.classList.remove('active');
+                    modalBtnContainer.remove();
+                    openAppsScriptModal();
+                };
+
                 this.reset();
                 dateError.style.display = 'none';
                 dateInput.setCustomValidity('');
@@ -2839,6 +2706,12 @@
         window.validateDate = validateDate;
         window.initCharts = initCharts;
         window.renderMonitoringTable = renderMonitoringTable;
+        window.openAppsScriptModal = openAppsScriptModal;
+        window.closeAppsScriptModal = closeAppsScriptModal;
+        window.copyAppsScriptCode = copyAppsScriptCode;
+        window.openConfigUrlModal = openConfigUrlModal;
+        window.closeConfigUrlModal = closeConfigUrlModal;
+        window.saveConfigUrlFromModal = saveConfigUrlFromModal;
     </script>
 
     <!-- Google Sync Progress Modal -->
@@ -2863,6 +2736,154 @@
             <div class="modal-buttons">
                 <button class="modal-btn modal-btn-cancel" onclick="closeLogoutModal()">Batal</button>
                 <button class="modal-btn modal-btn-confirm" onclick="confirmLogout()">Ya, Keluar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Google Apps Script Setup Guide Modal -->
+    <div id="appsScriptModal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 600px; width: 90%; text-align: left;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 15px;">
+                <h3 class="modal-title" style="margin-bottom: 0; font-size: 18px; color: #a83a52;">🛠️ Panduan Setup Google Apps Script</h3>
+                <span style="font-size: 24px; cursor: pointer; color: #aaa; font-weight: bold; line-height: 1;" onclick="closeAppsScriptModal()">&times;</span>
+            </div>
+            
+            <div style="font-size: 13px; color: #333; line-height: 1.5; max-height: 55vh; overflow-y: auto; padding-right: 5px;">
+                <p style="margin-bottom: 10px;">Metode ini memungkinkan <strong>siapa saja</strong> (dari berbagai email) untuk klik submit dan datanya otomatis masuk ke <strong>Spreadsheet & Drive yang sama milik Admin</strong> tanpa perlu login akun Google di aplikasi!</p>
+                
+                <h4 style="margin: 15px 0 5px; font-weight: 600; color: #111;">Langkah-langkah Setup:</h4>
+                <ol style="margin-left: 20px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 8px; padding-left: 0;">
+                    <li>Buka <strong><a href="https://sheets.new" target="_blank" style="color: #a83a52; font-weight: 600; text-decoration: underline;">Google Spreadsheet baru</a></strong>.</li>
+                    <li>Di menu atas spreadsheet, pilih <strong>Extensions (Ekstensi)</strong> &gt; <strong>Apps Script</strong>.</li>
+                    <li>Hapus semua kode default di dalam editor script, lalu <strong>salin dan tempel kode di bawah ini</strong>.</li>
+                    <li>Klik tombol <strong>Save (Simpan)</strong> 💾 di bagian atas.</li>
+                    <li>Klik tombol <strong>Deploy (Terapkan)</strong> di kanan atas &gt; pilih <strong>New deployment (Penerapan baru)</strong>.</li>
+                    <li>Pilih jenis <strong>Web app (Aplikasi web)</strong> (klik ikon gerigi di sebelah kiri "Pilih jenis" jika belum muncul).</li>
+                    <li>Ubah konfigurasi berikut:
+                        <ul style="margin-left: 20px; margin-top: 5px; list-style-type: circle;">
+                            <li>Execute as (Jalankan sebagai): <strong>Me (Email admin Anda)</strong></li>
+                            <li>Who has access (Siapa yang memiliki akses): <strong>Anyone (Siapa saja)</strong> <em>&lt;-- PENTING agar semua user dapat submit!</em></li>
+                        </ul>
+                    </li>
+                    <li>Klik tombol <strong>Deploy</strong>, lalu berikan izin akses (Authorize access) jika diminta oleh akun Google Anda.</li>
+                    <li>Salin <strong>Web App URL</strong> yang dihasilkan (berakhir dengan <code>/exec</code>).</li>
+                    <li>Klik tombol <strong>"Atur/Ubah URL Web App"</strong> di aplikasi ini, lalu paste URL tersebut dan klik Simpan!</li>
+                </ol>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin: 15px 0 5px;">
+                    <h4 style="font-weight: 600; color: #111; margin: 0;">📋 Salin Kode Apps Script:</h4>
+                    <button onclick="copyAppsScriptCode()" style="background: #f5e6e9; color: #a83a52; border: 1px solid #ebd3d7; padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: 600; transition: all 0.2s;">Salin Kode</button>
+                </div>
+                <textarea id="appsScriptCodeTextarea" readonly style="width: 100%; height: 160px; font-family: monospace; font-size: 11px; padding: 10px; background: #fafafa; border: 1px solid #ddd; border-radius: 4px; resize: vertical; line-height: 1.4;">function doPost(e) {
+  try {
+    var jsonString = e.postData.contents;
+    var data = JSON.parse(jsonString);
+    
+    // 1. Buka Spreadsheet (Menggunakan ID Spreadsheet Anda yang baru)
+    var spreadsheetId = "18KgMuMpfGf3mC_D50XKLdy6EfHxNYdPJCiWqCZiKEVs";
+    var ss;
+    if (spreadsheetId) {
+      ss = SpreadsheetApp.openById(spreadsheetId);
+    } else {
+      var files = DriveApp.getFilesByName("Logisales Delivery Requests");
+      if (files.hasNext()) {
+        ss = SpreadsheetApp.open(files.next());
+      } else {
+        ss = SpreadsheetApp.create("Logisales Delivery Requests");
+        var activeSheet = ss.getActiveSheet();
+        var headers = [
+          "Tanggal Request", "OMO", "No. Order", "Nama Customer", "No. RT", 
+          "RT Action", "Nama Barang", "Alamat Lengkap", "Kecamatan", 
+          "Kota", "Tanggal Kirim", "Remark", "Kesiapan Barang", "Lampiran (Drive Link)"
+        ];
+        activeSheet.appendRow(headers);
+      }
+    }
+    
+    var sheet = ss.getSheets()[0];
+    
+    // 2. Unggah File Lampiran ke Google Drive (Menggunakan Folder ID Anda yang baru)
+    var fileUrl = "Tidak ada lampiran";
+    if (data.fileData && data.fileName) {
+      var folder;
+      var folderId = "1ZTgYk1apRYglAj8WYezIzHEmJmbQADCO";
+      if (folderId) {
+        folder = DriveApp.getFolderById(folderId);
+      } else {
+        var folders = DriveApp.getFoldersByName("Logisales Delivery Attachments");
+        if (folders.hasNext()) {
+          folder = folders.next();
+        } else {
+          folder = DriveApp.createFolder("Logisales Delivery Attachments");
+        }
+      }
+      
+      // Convert base64 ke blob file
+      var contentType = data.fileType || "application/octet-stream";
+      var decodedBytes = Utilities.base64Decode(data.fileData);
+      var blob = Utilities.newBlob(decodedBytes, contentType, data.fileName);
+      var file = folder.createFile(blob);
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      fileUrl = file.getUrl();
+    }
+    
+    // 3. Tambahkan Baris Data Baru
+    var rowData = [
+      new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }), // Tanggal & Waktu di Indonesia
+      data.omo || "",
+      data.noOrder || "",
+      data.namaCustomer || "",
+      data.noRt || "",
+      data.rtAction || "",
+      data.namaBarang || "",
+      data.alamatLengkap || "",
+      data.kecamatan || "",
+      data.kota || "",
+      data.tanggalKirim || "",
+      data.remark || "",
+      data.kesiapanBarang || "",
+      fileUrl
+    ];
+    
+    sheet.appendRow(rowData);
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      message: "Berhasil mencatat data ke Google Spreadsheet!",
+      spreadsheetUrl: ss.getUrl(),
+      fileUrl: fileUrl
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      error: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}</textarea>
+            </div>
+            
+            <div style="border-top: 1px solid #eee; padding-top: 15px; margin-top: 15px; display: flex; justify-content: flex-end;">
+                <button class="modal-btn modal-btn-confirm" onclick="closeAppsScriptModal()" style="padding: 8px 20px;">Tutup Panduan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Config Apps Script URL Modal -->
+    <div id="configUrlModal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 450px;">
+            <div style="font-size: 40px; margin-bottom: 10px;">🔗</div>
+            <h3 class="modal-title" style="margin-bottom: 8px;">Konfigurasi Google Apps Script</h3>
+            <p style="color: #666; font-size: 13px; margin-bottom: 15px; line-height: 1.4;">Tempelkan URL Web App dari penerapan Google Apps Script Anda ke sini:</p>
+            
+            <div style="margin-bottom: 20px; text-align: left;">
+                <label style="font-size: 11px; font-weight: 600; color: #555; display: block; margin-bottom: 5px;">WEB APP URL (dari Google Apps Script)</label>
+                <input type="url" id="inputAppsScriptUrl" placeholder="https://script.google.com/macros/s/.../exec" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px;">
+            </div>
+            
+            <div class="modal-buttons" style="margin-top: 15px; display: flex; justify-content: center; gap: 15px;">
+                <button class="modal-btn modal-btn-cancel" onclick="closeConfigUrlModal()">Batal</button>
+                <button class="modal-btn modal-btn-confirm" onclick="saveConfigUrlFromModal()">Simpan URL</button>
             </div>
         </div>
     </div>
