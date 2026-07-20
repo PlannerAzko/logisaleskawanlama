@@ -6,6 +6,7 @@
     <title>PT. Kawan Lama Solusi - Logisales Delivery System</title>
     <link rel="icon" type="image/png" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQg3WYFEE_dQrphCfsBa0MBlzKDxA1Qo3I5HqIDQw05khi3Oz3D2U__3t0&s=10">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         * {
             margin: 0;
@@ -2005,10 +2006,7 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
-
-        // Initialize Loading Screen (registered immediately so it ALWAYS hides even if Firebase fails)
+        // Initialize Loading Screen (registered immediately so it ALWAYS hides even if Google API fails)
         window.addEventListener('load', function() {
             setTimeout(() => {
                 const loadingScreen = document.getElementById('loadingScreen');
@@ -2018,43 +2016,81 @@
             }, 4000); // Set to 4 seconds as requested
         });
 
-        // Initialize Firebase safely
-        let app = null;
-        let auth = null;
-        let provider = null;
+        // Initialize Google Identity Services safely
+        let tokenClient = null;
         let cachedAccessToken = null;
         let googleUser = null;
+        let googleClientId = null;
 
-        async function initFirebase() {
+        async function initGoogleGIS() {
             try {
                 const configRes = await fetch('./firebase-applet-config.json');
                 if (!configRes.ok) throw new Error('File firebase-applet-config.json tidak ditemukan atau tidak bisa dimuat');
-                const firebaseConfig = await configRes.json();
+                const config = await configRes.json();
+                
+                googleClientId = config.oAuthClientId || config.clientId || config.client_id;
+                if (!googleClientId || googleClientId.includes('YOUR_OAUTH_CLIENT_ID_HERE')) {
+                    throw new Error('Google Client ID tidak ditemukan atau masih default. Harap isi key "oAuthClientId" di firebase-applet-config.json dengan Client ID Anda.');
+                }
 
-                app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                provider = new GoogleAuthProvider();
-                provider.addScope('https://www.googleapis.com/auth/spreadsheets');
-                provider.addScope('https://www.googleapis.com/auth/drive.file');
+                // Wait for GIS script to load if needed
+                if (typeof google === 'undefined') {
+                    await new Promise((resolve) => {
+                        const checkInterval = setInterval(() => {
+                            if (typeof google !== 'undefined') {
+                                clearInterval(checkInterval);
+                                resolve();
+                            }
+                        }, 100);
+                    });
+                }
 
-                // Initialize Google UI and Listeners
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        googleUser = user;
-                        const storedToken = sessionStorage.getItem('google_oauth_token');
-                        if (storedToken) {
-                            cachedAccessToken = storedToken;
+                // Initialize Google Token Client for implicit flow
+                tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: googleClientId,
+                    scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email',
+                    callback: async (tokenResponse) => {
+                        if (tokenResponse.error !== undefined) {
+                            throw tokenResponse;
                         }
-                    } else {
-                        googleUser = null;
-                        cachedAccessToken = null;
-                        sessionStorage.removeItem('google_oauth_token');
-                    }
-                    updateGoogleStatusUI();
+                        
+                        cachedAccessToken = tokenResponse.access_token;
+                        sessionStorage.setItem('google_oauth_token', cachedAccessToken);
+                        
+                        // Fetch user email
+                        try {
+                            const infoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                                headers: { 'Authorization': `Bearer ${cachedAccessToken}` }
+                            });
+                            if (infoRes.ok) {
+                                const userInfo = await infoRes.json();
+                                googleUser = { email: userInfo.email };
+                                sessionStorage.setItem('google_user_email', userInfo.email);
+                            } else {
+                                googleUser = { email: 'Pengguna Terhubung' };
+                            }
+                        } catch (e) {
+                            googleUser = { email: 'Pengguna Terhubung' };
+                        }
+
+                        updateGoogleStatusUI();
+                        alert('🟢 Berhasil terhubung langsung dengan Google Sheets & Drive!');
+                    },
                 });
+
+                // Restore from session storage
+                const storedToken = sessionStorage.getItem('google_oauth_token');
+                const storedEmail = sessionStorage.getItem('google_user_email');
+                if (storedToken) {
+                    cachedAccessToken = storedToken;
+                    googleUser = { email: storedEmail || 'Pengguna Terhubung' };
+                }
+                updateGoogleStatusUI();
+
             } catch (error) {
-                console.warn('Firebase / Google Integration disabled (Operating in offline/local-demo mode):', error);
-                // Update Google connection status card to show offline warning gracefully
+                console.warn('Google Integration disabled or client ID not set yet:', error);
+                
+                // Show clean offline instructions
                 const titleEl = document.getElementById('googleStatusTitle');
                 const descEl = document.getElementById('googleStatusDesc');
                 const btnConnect = document.getElementById('btnConnectGoogle');
@@ -2062,13 +2098,13 @@
                 const barEl = document.getElementById('googleConnectionBar');
 
                 if (titleEl) {
-                    titleEl.textContent = 'Integrasi Google Workspace Tidak Aktif (Mode Offline)';
+                    titleEl.textContent = 'Integrasi Google Workspace (Mode Offline / Belum Dikonfigurasi)';
                     titleEl.style.color = '#e74c3c';
                 }
                 if (descEl) {
-                    descEl.innerHTML = 'Aplikasi berjalan dalam <strong>Mode Demo Mandiri</strong> karena konfigurasi Firebase belum siap atau domain belum di-whitelist di Firebase Console.';
+                    descEl.innerHTML = `Untuk mengaktifkan sinkronisasi otomatis, silakan buat <strong>OAuth 2.0 Web Client ID</strong> di Google Cloud Console dan masukkan ke file <strong>firebase-applet-config.json</strong> pada key <strong>"oAuthClientId"</strong>. Pastikan domain halaman ini telah ditambahkan di "Authorized JavaScript origins".`;
                 }
-                if (btnConnect) btnConnect.style.display = 'none';
+                if (btnConnect) btnConnect.style.display = 'flex'; // Allow retry
                 if (btnDisconnect) btnDisconnect.style.display = 'none';
                 if (barEl) {
                     barEl.style.borderColor = '#e74c3c';
@@ -2077,25 +2113,17 @@
             }
         }
 
-        // Run Firebase Initialization
-        initFirebase();
+        // Run Google GIS Initialization
+        initGoogleGIS();
 
         async function connectGoogle() {
-            if (!auth || !provider) {
-                alert('❌ Integrasi Google tidak aktif. Harap konfigurasikan Firebase dan pastikan file firebase-applet-config.json tersedia.');
+            if (!tokenClient) {
+                alert('❌ Integrasi Google belum siap. Harap isi "oAuthClientId" yang valid di firebase-applet-config.json.');
                 return;
             }
             try {
-                const result = await signInWithPopup(auth, provider);
-                const credential = GoogleAuthProvider.credentialFromResult(result);
-                if (!credential?.accessToken) {
-                    throw new Error('Gagal mendapatkan token akses dari Google.');
-                }
-                cachedAccessToken = credential.accessToken;
-                sessionStorage.setItem('google_oauth_token', cachedAccessToken);
-                googleUser = result.user;
-                updateGoogleStatusUI();
-                alert('🟢 Berhasil terhubung dengan Google Sheets & Drive!');
+                // Request access token with consent prompt
+                tokenClient.requestAccessToken({ prompt: 'consent' });
             } catch (error) {
                 console.error('Koneksi Google gagal:', error);
                 alert('❌ Koneksi Google gagal: ' + error.message);
@@ -2103,16 +2131,26 @@
         }
 
         async function disconnectGoogle() {
-            if (!auth) return;
             try {
-                await signOut(auth);
+                if (cachedAccessToken) {
+                    google.accounts.oauth2.revoke(cachedAccessToken, () => {
+                        console.log('Token revoked successfully');
+                    });
+                }
                 cachedAccessToken = null;
                 googleUser = null;
                 sessionStorage.removeItem('google_oauth_token');
+                sessionStorage.removeItem('google_user_email');
                 updateGoogleStatusUI();
                 alert('📴 Berhasil memutuskan hubungan dengan Google.');
             } catch (error) {
                 console.error('Gagal memutuskan hubungan:', error);
+                // Clear state anyway
+                cachedAccessToken = null;
+                googleUser = null;
+                sessionStorage.removeItem('google_oauth_token');
+                sessionStorage.removeItem('google_user_email');
+                updateGoogleStatusUI();
             }
         }
 
