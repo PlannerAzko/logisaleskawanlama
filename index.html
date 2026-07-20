@@ -2007,20 +2007,8 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
-        import firebaseConfig from './firebase-applet-config.json';
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-
-        const provider = new GoogleAuthProvider();
-        provider.addScope('https://www.googleapis.com/auth/spreadsheets');
-        provider.addScope('https://www.googleapis.com/auth/drive.file');
-
-        let cachedAccessToken = null;
-        let googleUser = null;
-
-        // Initialize Loading Screen
+        // Initialize Loading Screen (registered immediately so it ALWAYS hides even if Firebase fails)
         window.addEventListener('load', function() {
             setTimeout(() => {
                 const loadingScreen = document.getElementById('loadingScreen');
@@ -2030,25 +2018,73 @@
             }, 4000); // Set to 4 seconds as requested
         });
 
-        // Initialize Google UI and Listeners
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                googleUser = user;
-                // If the user was already signed in, we can try to prompt them to click "Hubungkan"
-                // to get the cachedAccessToken, or retrieve from sessionStorage if they had one.
-                const storedToken = sessionStorage.getItem('google_oauth_token');
-                if (storedToken) {
-                    cachedAccessToken = storedToken;
+        // Initialize Firebase safely
+        let app = null;
+        let auth = null;
+        let provider = null;
+        let cachedAccessToken = null;
+        let googleUser = null;
+
+        async function initFirebase() {
+            try {
+                const configRes = await fetch('./firebase-applet-config.json');
+                if (!configRes.ok) throw new Error('File firebase-applet-config.json tidak ditemukan atau tidak bisa dimuat');
+                const firebaseConfig = await configRes.json();
+
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                provider = new GoogleAuthProvider();
+                provider.addScope('https://www.googleapis.com/auth/spreadsheets');
+                provider.addScope('https://www.googleapis.com/auth/drive.file');
+
+                // Initialize Google UI and Listeners
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        googleUser = user;
+                        const storedToken = sessionStorage.getItem('google_oauth_token');
+                        if (storedToken) {
+                            cachedAccessToken = storedToken;
+                        }
+                    } else {
+                        googleUser = null;
+                        cachedAccessToken = null;
+                        sessionStorage.removeItem('google_oauth_token');
+                    }
+                    updateGoogleStatusUI();
+                });
+            } catch (error) {
+                console.warn('Firebase / Google Integration disabled (Operating in offline/local-demo mode):', error);
+                // Update Google connection status card to show offline warning gracefully
+                const titleEl = document.getElementById('googleStatusTitle');
+                const descEl = document.getElementById('googleStatusDesc');
+                const btnConnect = document.getElementById('btnConnectGoogle');
+                const btnDisconnect = document.getElementById('btnDisconnectGoogle');
+                const barEl = document.getElementById('googleConnectionBar');
+
+                if (titleEl) {
+                    titleEl.textContent = 'Integrasi Google Workspace Tidak Aktif (Mode Offline)';
+                    titleEl.style.color = '#e74c3c';
                 }
-            } else {
-                googleUser = null;
-                cachedAccessToken = null;
-                sessionStorage.removeItem('google_oauth_token');
+                if (descEl) {
+                    descEl.innerHTML = 'Aplikasi berjalan dalam <strong>Mode Demo Mandiri</strong> karena konfigurasi Firebase belum siap atau domain belum di-whitelist di Firebase Console.';
+                }
+                if (btnConnect) btnConnect.style.display = 'none';
+                if (btnDisconnect) btnDisconnect.style.display = 'none';
+                if (barEl) {
+                    barEl.style.borderColor = '#e74c3c';
+                    barEl.style.background = '#fdf2f2';
+                }
             }
-            updateGoogleStatusUI();
-        });
+        }
+
+        // Run Firebase Initialization
+        initFirebase();
 
         async function connectGoogle() {
+            if (!auth || !provider) {
+                alert('❌ Integrasi Google tidak aktif. Harap konfigurasikan Firebase dan pastikan file firebase-applet-config.json tersedia.');
+                return;
+            }
             try {
                 const result = await signInWithPopup(auth, provider);
                 const credential = GoogleAuthProvider.credentialFromResult(result);
@@ -2067,6 +2103,7 @@
         }
 
         async function disconnectGoogle() {
+            if (!auth) return;
             try {
                 await signOut(auth);
                 cachedAccessToken = null;
@@ -2092,24 +2129,30 @@
                 titleEl.textContent = '🟢 Google Workspace Aktif';
                 titleEl.style.color = '#27ae60';
                 descEl.innerHTML = `Terhubung sebagai <strong>${googleUser.email}</strong>. Setiap pengiriman akan otomatis dicatat ke Google Sheets dan lampiran diunggah ke Google Drive.`;
-                btnConnect.style.display = 'none';
-                btnDisconnect.style.display = 'block';
-                barEl.style.borderColor = '#27ae60';
-                barEl.style.background = '#f0fff4';
+                if (btnConnect) btnConnect.style.display = 'none';
+                if (btnDisconnect) btnDisconnect.style.display = 'block';
+                if (barEl) {
+                    barEl.style.borderColor = '#27ae60';
+                    barEl.style.background = '#f0fff4';
+                }
             } else {
                 titleEl.textContent = 'Integrasi Google Workspace Belum Aktif';
                 titleEl.style.color = '#333';
                 descEl.textContent = 'Hubungkan akun Google Anda untuk menyimpan request ke Google Spreadsheet & Lampiran ke Google Drive secara otomatis.';
-                btnConnect.style.display = 'flex';
-                btnDisconnect.style.display = 'none';
-                barEl.style.borderColor = '#ddd';
-                barEl.style.background = '#fff';
+                if (btnConnect) btnConnect.style.display = 'flex';
+                if (btnDisconnect) btnDisconnect.style.display = 'none';
+                if (barEl) {
+                    barEl.style.borderColor = '#ddd';
+                    barEl.style.background = '#fff';
+                }
             }
         }
 
-        // Attach Google button event listeners
-        document.getElementById('btnConnectGoogle').addEventListener('click', connectGoogle);
-        document.getElementById('btnDisconnectGoogle').addEventListener('click', disconnectGoogle);
+        // Attach Google button event listeners safely
+        const btnConnect = document.getElementById('btnConnectGoogle');
+        const btnDisconnect = document.getElementById('btnDisconnectGoogle');
+        if (btnConnect) btnConnect.addEventListener('click', connectGoogle);
+        if (btnDisconnect) btnDisconnect.addEventListener('click', disconnectGoogle);
 
         // Google Workspace APIs implementation
         async function uploadFileToDrive(file, progressCallback) {
