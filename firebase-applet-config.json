@@ -1,9 +1,10 @@
 {
-  "projectId": "logisales-384ec",
+  "projectId": "logisales",
   "appId": "1:244173335681:web:fafb9a281382da30a1f180",
   "apiKey": "AIzaSyAKxZaigj0ZO6JMDE1fQTZ70aYGv6xsNLI",
   "authDomain": "logisales-384ec.firebaseapp.com",
   "storageBucket": "logisales-384ec.firebasestorage.app",
   "messagingSenderId": "244173335681",
-  "measurementId": "G-K8Z73KSG5Y"
+  "measurementId": "G-K8Z73KSG5Y",
+  "oAuthClientId": "657545984118-n1e640d8u9ltihof39qad51l3eklk6ag.apps.googleusercontent.com"
 }
