@@ -2020,15 +2020,25 @@
         let cachedAccessToken = null;
         let googleUser = null;
 
-        // Initialize Loading Screen
-        window.addEventListener('load', function() {
-            setTimeout(() => {
-                const loadingScreen = document.getElementById('loadingScreen');
-                if (loadingScreen) {
-                    loadingScreen.classList.add('hidden');
-                }
-            }, 3000); // Reduced from 6000 for a snappier user experience
-        });
+        // Initialize Loading Screen - Safely and quickly hide it
+        function hideLoadingScreen() {
+            const loadingScreen = document.getElementById('loadingScreen');
+            if (loadingScreen && !loadingScreen.classList.contains('hidden')) {
+                loadingScreen.classList.add('hidden');
+            }
+        }
+
+        // Hide loading screen after DOM content is loaded, with a maximum 1.5 second delay
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                setTimeout(hideLoadingScreen, 1500);
+            });
+        } else {
+            setTimeout(hideLoadingScreen, 1500);
+        }
+
+        // Absolute safety fallback
+        setTimeout(hideLoadingScreen, 3000);
 
         // Initialize Google UI and Listeners
         onAuthStateChanged(auth, async (user) => {
